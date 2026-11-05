@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scientific Calculator Dashboard</title>
+<meta name="description" content="Scientific calculator with 32 functions, history, memory and dark mode. Works offline and installs like an app.">
+<meta name="theme-color" content="#0c1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SciCalc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700&display=swap">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#eef1f7; --panel:#ffffff; --line:#dce2ef; --ink:#141b2d; --muted:#667090;
+  --key-fn:#e7ebf5; --key-fn-ink:#26304a; --key-num:#f8f9fd; --key-num-ink:#141b2d;
+  --amber:#f2900c; --amber-ink:#2a1700; --teal:#14a37f; --teal-ink:#fff; --red:#d9503f;
+  --lcd:#0b1224; --lcd-ink:#7ff0c8; --lcd-dim:#6f7fa6; --shadow:rgba(30,40,80,.14);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1220; --panel:#151d33; --line:#25304e; --ink:#e8ecf7; --muted:#8a96b8;
+    --key-fn:#222d4b; --key-fn-ink:#dfe5f6; --key-num:#2c3859; --key-num-ink:#f2f5fc;
+    --amber:#ffb04a; --teal:#2fd3a5; --teal-ink:#06231b; --shadow:rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1220; --panel:#151d33; --line:#25304e; --ink:#e8ecf7; --muted:#8a96b8;
+  --key-fn:#222d4b; --key-fn-ink:#dfe5f6; --key-num:#2c3859; --key-num-ink:#f2f5fc;
+  --amber:#ffb04a; --teal:#2fd3a5; --teal-ink:#06231b; --shadow:rgba(0,0,0,.45);
+}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:"Sora",system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+.wrap{max-width:1040px;margin:0 auto;padding:16px 14px 28px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.tg{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 12px;font:600 12px "Sora",sans-serif;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 6px 18px -10px var(--shadow)}
+.stat{cursor:default;min-width:0}
+.stat.click{cursor:pointer}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+.val{font:500 20px "JetBrains Mono",ui-monospace,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.main{display:grid;grid-template-columns:380px 1fr;gap:14px;align-items:start}
+.lcd{background:var(--lcd);color:var(--lcd-ink);border-radius:12px;padding:10px 14px 12px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;min-height:104px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(127,240,200,.18)}
+.status{display:flex;justify-content:space-between;font-size:12px;color:var(--lcd-dim)}
+.hist{font-size:13px;text-align:right;min-height:18px;color:var(--lcd-dim);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.hist.err{color:#ff8f80}
+.disp{font-size:38px;text-align:right;line-height:1.15;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.disp.small{font-size:26px}
+.grid{display:grid;gap:7px;margin-top:12px}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+button{font:inherit;border:0;border-radius:10px;cursor:pointer;padding:0;touch-action:manipulation;transition:transform .06s,filter .1s}
+button:active{transform:scale(.96);filter:brightness(.92)}
+button:focus-visible,.tg:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.k{height:38px;font-size:13px;background:var(--key-fn);color:var(--key-fn-ink)}
+.m{font-size:11px;color:var(--teal)}
+.n{height:50px;font-size:20px;background:var(--key-num);color:var(--key-num-ink);border:1px solid var(--line)}
+.o{height:50px;font-size:22px;background:var(--amber);color:var(--amber-ink)}
+.c{background:var(--red);color:#fff}
+.eq{grid-column:1/-1;height:52px;font-size:22px;background:var(--teal);color:var(--teal-ink)}
+.side{display:grid;gap:14px;min-width:0}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.row h2{font-size:14px;margin:0}
+.link{background:none;color:var(--muted);font-size:12px;padding:4px 6px}
+.tape{max-height:250px;overflow-y:auto;display:grid;gap:6px}
+.item{display:flex;justify-content:space-between;gap:10px;background:var(--bg);border-radius:10px;padding:8px 10px;font:12px "JetBrains Mono",ui-monospace,monospace;text-align:left;color:var(--ink)}
+.item span:first-child{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item b{font-weight:700;color:var(--teal)}
+.empty{color:var(--muted);font-size:13px;padding:6px 0}
+.bar{display:grid;grid-template-columns:110px 1fr 28px;gap:10px;align-items:center;font-size:12px;margin:9px 0}
+.track{height:8px;border-radius:6px;background:var(--bg);overflow:hidden}
+.fill{height:100%;border-radius:6px;background:var(--teal);width:0;transition:width .3s}
+.bar:nth-child(even) .fill{background:var(--amber)}
+.bar span:last-child{text-align:right;font-family:"JetBrains Mono",monospace;color:var(--muted)}
+.consts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.const{background:var(--bg);border-radius:12px;padding:10px;text-align:left;color:var(--ink)}
+.const b{display:block;font:500 15px "JetBrains Mono",monospace;margin-top:4px;overflow:hidden;text-overflow:ellipsis}
+.tip{font-size:12px;color:var(--muted);margin-top:12px;text-align:center}
+@media (max-width:860px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.calc{max-width:420px;width:100%;margin:0 auto}}
+@media (prefers-reduced-motion:reduce){button,.fill{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Scientific Calculator</h1><div class="sub">FX-991CW style: 32 functions, history and memory</div></div>
+    <button class="tg" id="theme" type="button">Switch theme</button>
+  </header>
+
+  <section class="stats">
+    <div class="card stat click" id="statMode" role="button" tabindex="0"><div class="lbl">Angle mode (tap to switch)</div><div class="val" id="vMode">Degree</div></div>
+    <div class="card stat"><div class="lbl">Memory</div><div class="val" id="vMem">0</div></div>
+    <div class="card stat"><div class="lbl">Last result</div><div class="val" id="vLast">–</div></div>
+    <div class="card stat"><div class="lbl">Calculations</div><div class="val" id="vCount">0</div></div>
+  </section>
+
+  <div class="main">
+    <section class="card calc" aria-label="Calculator">
+      <div class="lcd" role="status" aria-live="polite">
+        <div class="status"><span id="mode">DEG</span><span id="mem"></span></div>
+        <div class="hist" id="hist"></div>
+        <div class="disp" id="disp">0</div>
+      </div>
+      <div class="grid g5" id="fn"></div>
+      <div class="grid g4" id="pad"></div>
+    </section>
+
+    <div class="side">
+      <section class="card">
+        <div class="row"><h2>History</h2><button class="link" id="clearH" type="button">Clear</button></div>
+        <div class="tape" id="tape"></div>
+      </section>
+      <section class="card">
+        <div class="row"><h2>Usage by type</h2></div>
+        <div id="bars"></div>
+      </section>
+      <section class="card">
+        <div class="row"><h2>Constants</h2></div>
+        <div class="consts">
+          <button class="const" data-k="pi" type="button"><span class="lbl">π</span><b id="cPi"></b></button>
+          <button class="const" data-k="e" type="button"><span class="lbl">e</span><b id="cE"></b></button>
+        </div>
+        <div class="tip">Keyboard: digits, + - * / ^ %, Enter, Backspace, Esc</div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const S={cur:'0',acc:null,op:null,fresh:true,mem:0,deg:true,err:null,hist:'',log:[],count:0,last:null};
+const CATS=['Arithmetic','Powers and roots','Trigonometry','Logs and exponents','Counting'];
+const tally=[0,0,0,0,0];
+const $=id=>document.getElementById(id);
+const rad=x=>S.deg?x*Math.PI/180:x, out=x=>S.deg?x*180/Math.PI:x;
+const trim=v=>Math.round(v*1e10)/1e10;
+const num=()=>parseFloat(S.cur);
+function fmt(v){
+  if(!isFinite(v)) return 'Error';
+  const t=trim(v);
+  return Math.abs(t)>=1e13?t.toExponential(8).replace(/\.?0+e/,'e'):String(t);
+}
+function bad(m){throw new Error(m)}
+function fact(n){
+  if(n<0||n!==Math.floor(n)) bad('Factorial needs a non-negative integer');
+  if(n>170) bad('Result too large');
+  let r=1;for(let i=2;i<=n;i++)r*=i;return r;
+}
+const U={
+  sin:x=>Math.sin(rad(x)), cos:x=>Math.cos(rad(x)), tan:x=>Math.tan(rad(x)),
+  asin:x=>{if(x<-1||x>1)bad('Value must be between -1 and 1');return out(Math.asin(x))},
+  acos:x=>{if(x<-1||x>1)bad('Value must be between -1 and 1');return out(Math.acos(x))},
+  atan:x=>out(Math.atan(x)),
+  log:x=>{if(x<=0)bad('Log needs a positive number');return Math.log10(x)},
+  ln:x=>{if(x<=0)bad('Ln needs a positive number');return Math.log(x)},
+  exp:x=>Math.exp(x),
+  sqrt:x=>{if(x<0)bad('No square root of a negative number');return Math.sqrt(x)},
+  cbrt:x=>Math.cbrt(x), sq:x=>x*x, cube:x=>x*x*x, fact,
+  inv:x=>{if(x===0)bad('Cannot divide by zero');return 1/x}
+};
+const UL={sin:'sin',cos:'cos',tan:'tan',asin:'sin⁻¹',acos:'cos⁻¹',atan:'tan⁻¹',log:'log',ln:'ln',exp:'e^',sqrt:'√',cbrt:'∛',sq:'sqr',cube:'cube',fact:'fact',inv:'1/'};
+const CAT={inv:0,sqrt:1,cbrt:1,sq:1,cube:1,sin:2,cos:2,tan:2,asin:2,acos:2,atan:2,log:3,ln:3,exp:3,fact:4,
+  add:0,sub:0,mul:0,div:0,mod:0,pct:0,pow:1,root:1,npr:4,ncr:4};
+const B={
+  add:[(a,b)=>a+b,'+'], sub:[(a,b)=>a-b,'−'], mul:[(a,b)=>a*b,'×'],
+  div:[(a,b)=>{if(b===0)bad('Cannot divide by zero');return a/b},'÷'],
+  pow:[(a,b)=>Math.pow(a,b),'^'],
+  root:[(a,n)=>{
+    if(n===0)bad('Root index cannot be zero');
+    if(a<0&&n%2===0)bad('Even root of a negative number is not real');
+    const r=Math.pow(Math.abs(a),1/n);return a<0?-r:r},'ʸ√'],
+  mod:[(a,b)=>{if(b===0)bad('Modulus by zero is undefined');return a%b},'mod'],
+  pct:[(a,p)=>a*p/100,'% of'],
+  npr:[(n,r)=>{
+    if(n<0||r<0||r>n||n%1||r%1)bad('Need whole numbers with 0 ≤ r ≤ n');
+    let p=1;for(let i=n-r+1;i<=n;i++)p*=i;return p},'P'],
+  ncr:[(n,r)=>{
+    if(n<0||r<0||r>n||n%1||r%1)bad('Need whole numbers with 0 ≤ r ≤ n');
+    r=Math.min(r,n-r);let c=1;for(let i=1;i<=r;i++)c=c*(n-r+i)/i;return Math.round(c)},'C']
+};
+function setErr(m){S.err=m;S.cur='0';S.acc=null;S.op=null;S.fresh=true;S.hist=''}
+function setVal(v){
+  if(!isFinite(v)) bad('Result out of range');
+  S.cur=fmt(v);S.fresh=true;
+}
+function record(expr,k){
+  S.log.unshift({expr,res:S.cur});
+  if(S.log.length>30)S.log.pop();
+  S.count++;S.last=S.cur;tally[CAT[k]]++;
+}
+function press(k){
+  S.err=null;
+  try{
+    if(/^\d$/.test(k)){
+      if(S.fresh){S.cur=k;S.fresh=false}
+      else if(S.cur.replace(/[-.]/g,'').length<15) S.cur=S.cur==='0'?k:(S.cur==='-0'?'-'+k:S.cur+k);
+    }else if(k==='.'){
+      if(S.fresh){S.cur='0.';S.fresh=false}else if(!S.cur.includes('.'))S.cur+='.';
+    }else if(k==='neg'){
+      if(S.cur!=='0')S.cur=S.cur[0]==='-'?S.cur.slice(1):'-'+S.cur;
+    }else if(k==='del'){
+      if(S.fresh){S.cur='0'}else{S.cur=S.cur.slice(0,-1);if(S.cur===''||S.cur==='-')S.cur='0'}
+    }else if(k==='ac'){
+      S.cur='0';S.acc=null;S.op=null;S.fresh=true;S.hist='';
+    }else if(k==='pi'){S.cur=fmt(Math.PI);S.fresh=true}
+    else if(k==='e'){S.cur=fmt(Math.E);S.fresh=true}
+    else if(k==='deg'){S.deg=!S.deg}
+    else if(k==='mp'){S.mem+=num();S.fresh=true}
+    else if(k==='mm'){S.mem-=num();S.fresh=true}
+    else if(k==='mrc'){S.cur=fmt(S.mem);S.fresh=true}
+    else if(k==='mc'){S.mem=0}
+    else if(U[k]){
+      const x=num(),r=U[k](x);
+      S.hist=UL[k]+'('+fmt(x)+')';setVal(r);record(S.hist,k);
+    }else if(B[k]){
+      if(S.op&&!S.fresh){
+        const a=S.acc,b=num(),o=S.op,r=B[o][0](a,b);
+        setVal(r);record(fmt(a)+' '+B[o][1]+' '+fmt(b),o);
+      }
+      S.acc=num();S.op=k;S.fresh=true;
+      S.hist=fmt(S.acc)+' '+B[k][1];
+    }else if(k==='eq'){
+      if(S.op){
+        const a=S.acc,b=num(),o=S.op;
+        const r=B[o][0](a,b);
+        S.hist=fmt(a)+' '+B[o][1]+' '+fmt(b)+' =';
+        S.acc=null;S.op=null;setVal(r);record(S.hist.slice(0,-2),o);
+      }
+    }
+  }catch(e){setErr(e.message)}
+  render();
+}
+function render(){
+  const d=$('disp');
+  d.textContent=S.err?'Error':S.cur;
+  d.classList.toggle('small',d.textContent.length>11);
+  $('hist').textContent=S.err||S.hist;
+  $('hist').classList.toggle('err',!!S.err);
+  $('mode').textContent=S.deg?'DEG':'RAD';
+  $('mem').textContent=S.mem!==0?'M = '+fmt(S.mem):'';
+  $('vMode').textContent=S.deg?'Degree':'Radian';
+  $('vMem').textContent=fmt(S.mem);
+  $('vLast').textContent=S.last===null?'–':S.last;
+  $('vCount').textContent=S.count;
+  const tape=$('tape');tape.textContent='';
+  if(!S.log.length){const p=document.createElement('div');p.className='empty';p.textContent='Your results will appear here. Tap one to reuse it.';tape.appendChild(p)}
+  S.log.forEach(h=>{
+    const b=document.createElement('button');b.type='button';b.className='item';b.dataset.res=h.res;
+    const a=document.createElement('span');a.textContent=h.expr;
+    const r=document.createElement('b');r.textContent='= '+h.res;
+    b.append(a,r);tape.appendChild(b);
+  });
+  const mx=Math.max(1,...tally);
+  $('bars').innerHTML=CATS.map((c,i)=>`<div class="bar"><span>${c}</span><div class="track"><div class="fill" style="width:${tally[i]/mx*100}%"></div></div><span>${tally[i]}</span></div>`).join('');
+}
+const FN=[
+ ['DEG/RAD','deg','k m'],['MC','mc','k m'],['MRC','mrc','k m'],['M−','mm','k m'],['M+','mp','k m'],
+ ['sin','sin','k'],['cos','cos','k'],['tan','tan','k'],['π','pi','k'],['e','e','k'],
+ ['sin⁻¹','asin','k'],['cos⁻¹','acos','k'],['tan⁻¹','atan','k'],['log','log','k'],['ln','ln','k'],
+ ['x²','sq','k'],['x³','cube','k'],['√','sqrt','k'],['∛','cbrt','k'],['eˣ','exp','k'],
+ ['xʸ','pow','k'],['ʸ√x','root','k'],['x!','fact','k'],['1/x','inv','k'],['mod','mod','k'],
+ ['nPr','npr','k'],['nCr','ncr','k'],['% of','pct','k'],['DEL','del','k'],['AC','ac','k c']
+];
+const PAD=[
+ ['7','7','n'],['8','8','n'],['9','9','n'],['÷','div','o'],
+ ['4','4','n'],['5','5','n'],['6','6','n'],['×','mul','o'],
+ ['1','1','n'],['2','2','n'],['3','3','n'],['−','sub','o'],
+ ['0','0','n'],['.','.','n'],['±','neg','n'],['+','add','o'],
+ ['=','eq','eq']
+];
+function build(id,list){
+  list.forEach(([l,k,c])=>{
+    const b=document.createElement('button');
+    b.type='button';b.textContent=l;b.dataset.k=k;b.className=c;$(id).appendChild(b);
+  });
+}
+build('fn',FN);build('pad',PAD);
+$('cPi').textContent=fmt(Math.PI);$('cE').textContent=fmt(Math.E);
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');
+  if(t&&t.dataset.k){press(t.dataset.k);return}
+  if(t&&t.dataset.res!==undefined){S.cur=t.dataset.res;S.fresh=true;S.err=null;render();return}
+  if(t&&t.id==='clearH'){S.log=[];render();return}
+  if(e.target.closest('#statMode'))press('deg');
+});
+$('statMode').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();press('deg')}});
+$('theme').addEventListener('click',()=>{
+  const r=document.documentElement;
+  const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+});
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.target.closest&&e.target.closest('button,[role=button]')&&(e.key==='Enter'||e.key===' '))return;
+  const k=e.key;
+  const map={'+':'add','-':'sub','*':'mul','/':'div','^':'pow','%':'mod','Enter':'eq','=':'eq','Backspace':'del','Escape':'ac','.':'.',',':'.'};
+  if(/^\d$/.test(k)){press(k)}
+  else if(map[k]){e.preventDefault();press(map[k])}
+});
+render();
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
+}
+</script>
+</body>
+</html>
